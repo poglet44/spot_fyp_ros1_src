@@ -1,0 +1,67 @@
+octomap_server:
+  # Frame in which the OctoMap is built.
+  # RTAB-Map should provide map -> odom.
+  # Spot TF should provide odom -> body.
+  # Static TF should provide body -> velodyne.
+  frame_id: map
+  base_frame_id: body
+
+  # Voxel resolution.
+  # 0.05 m = detailed, heavier, noisier projection.
+  # 0.10 m = cleaner/coarser, likely better later for frontiers.
+  resolution: 0.05
+
+  # Compress map for efficiency.
+  compress_map: true
+
+  # Do not latch while live mapping.
+  latch: false
+
+  # Publish free-space markers/updates for debugging.
+  publish_free_space: true
+
+  # Ground filtering OFF initially.
+  # We do not want OctoMap's plane filter accidentally removing table/floor structure
+  # before we understand the live data.
+  filter_ground: false
+
+  # Speckle filtering OFF for the next controlled test.
+  # Turn true later as a separate test.
+  filter_speckles: true
+
+  # Full octree depth at selected resolution.
+  max_depth: 16
+
+  # Point cloud insertion z limits.
+  # These limit which incoming cloud points are inserted into the 3D octree.
+  pointcloud_min_z: -50.0
+  pointcloud_max_z: 50.0
+
+  # 2D projected map occupancy z band.
+  # This was previously -100 to +100, which collapsed too much vertical clutter
+  # into /projected_map.
+  occupancy_min_z: 0.05
+  occupancy_max_z: 1.00
+
+  # Rebuild 2D projection from the full tree rather than incrementally.
+  # Keep false initially for safer/debuggable behaviour.
+  incremental_2D_projection: false
+
+  # Sensor model.
+  sensor_model:
+    max_range: 5.0
+
+  # Explicit sensor model probabilities.
+  # These are standard/conservative defaults; keep fixed during z-band testing.
+  sensor_model_hit: 0.75
+  sensor_model_miss: 0.45
+  sensor_model_min: 0.12
+  sensor_model_max: 0.97
+  sensor_model_min_range: 0.25
+  sensor_model_max_range: 5.0
+
+  # Ground filter params are inactive while filter_ground=false,
+  # but keep them documented for later tests.
+  ground_filter_angle: 0.15
+  ground_filter_distance: 0.04
+  ground_filter_plane_distance: 0.30

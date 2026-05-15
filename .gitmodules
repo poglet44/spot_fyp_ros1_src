@@ -1,0 +1,3 @@
+[submodule "spot_ros"]
+	path = spot_ros
+	url = git@github.com:poglet44/spot_ros.git

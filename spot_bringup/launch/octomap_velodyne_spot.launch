@@ -1,0 +1,35 @@
+<launch>
+  <!--
+    OctoMap layer for Spot + Velodyne.
+
+    Pipeline:
+      /velodyne_points
+        -> octomap_server
+        -> /octomap_binary
+        -> /octomap_full
+        -> /occupied_cells_vis_array
+        -> /projected_map
+
+    Assumptions:
+      - RTAB-Map is already publishing map -> odom.
+      - Spot TF provides odom -> body.
+      - Static/extrinsic TF provides body -> velodyne.
+      - Input cloud is sensor_msgs/PointCloud2.
+  -->
+
+  <arg name="cloud_topic" default="/velodyne_points"/>
+  <arg name="config_file"
+       default="$(find spot_bringup)/config/octomap_velodyne_spot.yaml"/>
+
+  <!-- Load OctoMap params under /octomap_server namespace -->
+  <rosparam command="load" file="$(arg config_file)"/>
+
+  <node pkg="octomap_server"
+        type="octomap_server_node"
+        name="octomap_server"
+        output="screen">
+
+    <!-- octomap_server subscribes to cloud_in internally -->
+    <remap from="cloud_in" to="$(arg cloud_topic)"/>
+  </node>
+</launch>

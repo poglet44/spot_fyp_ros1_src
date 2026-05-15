@@ -1,0 +1,84 @@
+enable_logging: true
+log_root_dir: ~/Sam/spot_ros1_ws/logs
+
+map_topic: /exploration_grid
+frontier_cells_topic: /frontier_cells
+frontier_markers_topic: /frontier_markers
+frontier_goals_topic: /frontier_goals
+selected_goal_topic: /selected_frontier_goal
+frontier_path_topic: /frontier_path
+frontier_regions_markers_topic: /frontier_regions_markers
+
+robot_frame: body
+tf_lookup_timeout_s: 0.20
+robot_pose_warn_period_s: 5.0
+
+unknown_value: -1
+free_max_value: 0
+occupied_min_value: 50
+
+use_8_connected_frontiers: true
+min_cluster_size_cells: 3
+
+merge_nearby_frontier_clusters: true
+frontier_cluster_merge_distance_m: 0.30
+
+min_obstacle_clearance_m: 0.10
+min_robot_distance_m: 0.75
+
+goal_search_radius_m: 1.00
+max_goals_to_publish: 50
+candidate_validity_radius_m: 0.75
+
+enable_path_planning: true
+allow_diagonal_motion: true
+prevent_diagonal_corner_cutting: true
+path_obstacle_clearance_m: 0.10
+require_reachable: true
+
+plan_every_n_maps: 3
+min_plan_period_s: 0.75
+publish_text_labels: true
+publish_debug_every_n_maps: 10
+region_anchor_clearance_m: 0.50
+
+use_region_hierarchy: true
+selection_mode: candidates_only
+
+selection_policy: utility
+utility_distance_weight: 1.0
+utility_gain_weight: 0.020
+stability_weight: 0.10
+density_weight: 0.10
+candidate_stability_match_radius_m: 0.75
+max_candidate_stability_cycles: 20
+
+use_path_distance_for_regions: true
+frontier_region_merge_path_distance_m: 5.0
+frontier_region_merge_distance_m: 5.0
+max_region_pair_checks: 80
+
+region_distance_weight: 1.0
+region_candidate_mean_weight: 0.35
+region_gain_weight: 0.0
+region_candidate_count_weight: 0.0
+region_density_weight: 0.0
+
+region_switch_margin: 1.0
+region_switch_penalty: 0.5
+
+enable_goal_hysteresis: false
+hysteresis_goal_match_distance_m: 0.75
+hysteresis_switch_margin: 0.75
+
+goal_reached_distance_m: 0.35
+goal_timeout_s: 120.0
+goal_blacklist_radius_m: 0.50
+goal_blacklist_duration_s: 20.0
+minimum_goal_switch_improvement: 0.00
+enable_goal_timeout: true
+enable_goal_blacklist: true
+active_goal_match_radius_m: 1.0
+active_goal_invalid_grace_cycles: 5
+
+marker_scale_m: 0.08

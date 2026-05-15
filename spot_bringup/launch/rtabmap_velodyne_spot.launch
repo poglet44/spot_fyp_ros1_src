@@ -1,0 +1,67 @@
+<launch>
+  <!--
+    RTAB-Map ROS1 Noetic for Spot + Velodyne.
+
+    Inputs:
+      /velodyne_points
+      /spot/odometry_corrected
+      TF: vision -> body -> velodyne
+  -->
+
+  <arg name="database_path" default="$(env HOME)/.ros/rtabmap_spot_velodyne.db"/>
+  <arg name="params_file" default="$(find spot_bringup)/config/rtabmap_velodyne_spot.yaml"/>
+
+  <include file="$(find rtabmap_ros)/launch/rtabmap.launch">
+
+    <!-- Required empty args -->
+    <arg name="args" value=""/>
+    <arg name="ground_truth_base_frame_id" value=""/>
+    <arg name="ground_truth_frame_id" value=""/>
+    <arg name="initial_pose" value=""/>
+    <arg name="launch_prefix" value=""/>
+    <arg name="odom_args" value=""/>
+    <arg name="odom_frame_id_init" value=""/>
+    <arg name="odom_guess_frame_id" value=""/>
+    <arg name="scan_cloud_assembling_fixed_frame" value=""/>
+
+    <!-- Frames -->
+    <arg name="frame_id" value="body"/>
+    <arg name="odom_frame_id" value="vision"/>
+    <arg name="map_frame_id" value="map"/>
+
+    <!-- External Spot odometry -->
+    <arg name="odom_topic" value="/spot/odometry_corrected"/>
+    <arg name="visual_odometry" value="false"/>
+    <arg name="icp_odometry" value="false"/>
+    <arg name="publish_tf_odom" value="false"/>
+    <arg name="publish_tf_map" value="true"/>
+
+    <!-- Disable camera inputs -->
+    <arg name="depth" value="false"/>
+    <arg name="subscribe_rgb" value="false"/>
+    <arg name="subscribe_rgbd" value="false"/>
+    <arg name="subscribe_scan" value="false"/>
+    <arg name="subscribe_scan_descriptor" value="false"/>
+
+    <!-- Velodyne cloud input -->
+    <arg name="subscribe_scan_cloud" value="true"/>
+    <arg name="scan_cloud_topic" value="/velodyne_points"/>
+
+    <!-- No GUI on NUC -->
+    <arg name="rtabmapviz" value="false"/>
+    <arg name="rtabmap_viz" value="false"/>
+    <arg name="rviz" value="false"/>
+    <arg name="output" value="screen"/>
+
+    <!-- Runtime -->
+    <arg name="database_path" value="$(arg database_path)"/>
+    <arg name="queue_size" value="5"/>
+    <arg name="approx_sync" value="false"/>
+    <arg name="wait_for_transform" value="0.5"/>
+
+    <!-- Load RTAB-Map params from file -->
+    <arg name="rtabmap_args" value="--delete_db_on_start"/>
+    <arg name="cfg" value="$(arg params_file)"/>
+
+  </include>
+</launch>

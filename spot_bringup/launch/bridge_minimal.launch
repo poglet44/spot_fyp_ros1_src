@@ -1,0 +1,13 @@
+<launch>
+  <node pkg="ros1_bridge"
+        type="dynamic_bridge"
+        name="ros1_bridge_minimal"
+        output="screen"
+        args="
+          /tf@tf2_msgs/msg/TFMessage[tf2_msgs/TFMessage
+          /tf_static@tf2_msgs/msg/TFMessage[tf2_msgs/TFMessage
+          /joint_states@sensor_msgs/msg/JointState[sensor_msgs/JointState
+          /odometry@nav_msgs/msg/Odometry[nav_msgs/Odometry
+        " />
+</launch>
+

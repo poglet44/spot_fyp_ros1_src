@@ -1,0 +1,23 @@
+<launch>
+  <!--
+    Converts OctoMap /projected_map into a cleaner exploration grid.
+
+    Input:
+      /projected_map
+
+    Output:
+      /exploration_grid
+
+    This does NOT do frontier extraction yet.
+  -->
+
+  <arg name="config_file"
+       default="$(find spot_bringup)/config/exploration_grid_from_projected_map.yaml"/>
+
+  <rosparam command="load" file="$(arg config_file)"/>
+
+  <node pkg="spot_bringup"
+        type="exploration_grid_from_projected_map.py"
+        name="exploration_grid_from_projected_map"
+        output="screen"/>
+</launch>

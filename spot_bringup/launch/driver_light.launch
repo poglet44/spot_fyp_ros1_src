@@ -1,0 +1,21 @@
+<launch>
+
+  <env name="SPOT_ARM" value="0"/>
+  <env name="SPOT_VELODYNE_HOST" value="192.168.50.201"/>
+  <env name="SPOT_PACK" value="1"/>
+  <env name="SPOT_LIDAR_MOUNT" value="1"/>
+  <env name="SPOT_VELODYNE" value="1"/>
+  <env name="SPOT_VELODYNE_AUTOLAUNCH" value="1"/>
+  <env name="SPOT_VELODYNE_RPY" value="0 0 0.5235"/>
+  
+  <arg name="hostname" default="10.0.10.31"/>
+  <arg name="username" default="user"/>
+  <arg name="password" default="qpjpv23iop23"/>
+
+  <include file="$(find spot_driver)/launch/driver.launch">
+    <arg name="hostname" value="$(arg hostname)"/>
+    <arg name="username" value="$(arg username)"/>
+    <arg name="password" value="$(arg password)"/>
+    <arg name="driver_config" value="$(find spot_bringup)/config/spot_ros_light.yaml"/>
+  </include>
+</launch>

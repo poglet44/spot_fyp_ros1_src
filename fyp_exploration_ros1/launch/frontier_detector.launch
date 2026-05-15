@@ -1,0 +1,11 @@
+<launch>
+  <node
+    pkg="fyp_exploration_ros1"
+    type="frontier_detector.py"
+    name="frontier_detector"
+    output="screen">
+
+    <rosparam command="load" file="$(find fyp_exploration_ros1)/config/frontier_detector.yaml" />
+
+  </node>
+</launch>
