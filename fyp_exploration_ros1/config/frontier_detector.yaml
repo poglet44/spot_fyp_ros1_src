@@ -33,7 +33,7 @@ candidate_validity_radius_m: 0.75
 enable_path_planning: true
 allow_diagonal_motion: true
 prevent_diagonal_corner_cutting: true
-path_obstacle_clearance_m: 0.10
+path_obstacle_clearance_m: 0.20
 require_reachable: true
 
 plan_every_n_maps: 3

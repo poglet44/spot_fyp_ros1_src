@@ -49,7 +49,7 @@ robot_frame: body
 # Motion enable
 # ---------------------------------------------------------------------------
 
-enable_motion: false
+enable_motion: true
 
 # ---------------------------------------------------------------------------
 # Control timing
@@ -83,7 +83,7 @@ rotate_to_heading_threshold_rad: 0.45
 
 occupied_threshold: 50
 unknown_is_blocked: true
-safety_check_radius_m: 0.25
+safety_check_radius_m: 0.10
 check_path_to_lookahead: true
 
 # ---------------------------------------------------------------------------
