@@ -1,0 +1,11 @@
+<launch>
+  <node
+    pkg="fyp_exploration_ros1"
+    type="spot_frontier_executor.py"
+    name="spot_frontier_executor"
+    output="screen">
+
+    <rosparam command="load" file="$(find fyp_exploration_ros1)/config/spot_frontier_executor.yaml" />
+
+  </node>
+</launch>
