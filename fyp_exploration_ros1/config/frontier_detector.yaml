@@ -33,7 +33,7 @@ candidate_validity_radius_m: 0.75
 enable_path_planning: true
 allow_diagonal_motion: true
 prevent_diagonal_corner_cutting: true
-path_obstacle_clearance_m: 0.20
+path_obstacle_clearance_m: 0.35
 require_reachable: true
 
 plan_every_n_maps: 3
@@ -45,7 +45,7 @@ region_anchor_clearance_m: 0.50
 use_region_hierarchy: true
 selection_mode: candidates_only
 
-selection_policy: utility
+selection_policy: nearest
 utility_distance_weight: 1.0
 utility_gain_weight: 0.020
 stability_weight: 0.10

@@ -83,19 +83,19 @@ rotate_to_heading_threshold_rad: 0.45
 
 occupied_threshold: 50
 unknown_is_blocked: true
-safety_check_radius_m: 0.10
+safety_check_radius_m: 0.20
 check_path_to_lookahead: true
 
 # ---------------------------------------------------------------------------
 # Velocity command limits
 # ---------------------------------------------------------------------------
 
-max_linear_x_mps: 0.15
+max_linear_x_mps: 1.5
 max_linear_y_mps: 0.0
-max_angular_z_radps: 0.25
+max_angular_z_radps: 0.50
 
-linear_gain: 0.35
-angular_gain: 0.80
+linear_gain: 3.50
+angular_gain: 2.00
 
 allow_reverse: false
 allow_lateral_motion: false

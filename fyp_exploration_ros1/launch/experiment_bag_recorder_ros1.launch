@@ -1,0 +1,9 @@
+<launch>
+  <node
+    pkg="fyp_exploration_ros1"
+    type="experiment_bag_recorder_ros1.py"
+    name="experiment_bag_recorder_ros1"
+    output="screen">
+    <rosparam command="load" file="$(find fyp_exploration_ros1)/config/experiment_bag_recorder_ros1.yaml" />
+  </node>
+</launch>

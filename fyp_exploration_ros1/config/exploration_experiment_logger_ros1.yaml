@@ -1,0 +1,32 @@
+map_topic: /exploration_grid
+selected_goal_topic: /selected_frontier_goal
+
+map_frame: map
+robot_frame: body
+
+log_root_dir: ~/Sam/spot_ros1_ws/logs
+use_latest_detector_run_dir: true
+detector_run_dir_wait_timeout_s: 10.0
+detector_run_dir_max_age_s: 60.0
+
+run_id: ""
+platform: ros1_spot
+algorithm_name: utility_frontier
+environment_name: real_world_test
+
+notes: ""
+manual_intervention: false
+run_valid: true
+
+log_period_s: 1.0
+
+goal_match_tolerance_m: 0.25
+goal_reached_distance_m: 0.35
+goal_timeout_s: 120.0
+minimum_attempt_distance_m: 0.50
+
+unknown_value: -1
+free_max_value: 0
+occupied_min_value: 50
+
+completion_unknown_fraction_threshold: 0.02

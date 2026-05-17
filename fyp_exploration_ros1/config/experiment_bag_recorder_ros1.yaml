@@ -1,0 +1,32 @@
+log_root_dir: ~/Sam/spot_ros1_ws/logs
+use_latest_detector_run_dir: true
+detector_run_dir_wait_timeout_s: 10.0
+detector_run_dir_max_age_s: 60.0
+
+bag_dir_name: bag
+bag_name: experiment.bag
+
+# ROS1 compression. Faster and safer onboard than bz2.
+use_lz4: true
+
+topics:
+  - /tf
+  - /tf_static
+
+  - /odom
+  - /odometry
+  - /spot/odometry
+  - /spot/odometry_corrected
+
+  - /exploration_grid
+  - /projected_map
+  - /occupied_cells_vis_array
+
+  - /selected_frontier_goal
+  - /frontier_path
+  - /frontier_goals
+  - /frontier_cells
+  - /frontier_markers
+  - /frontier_regions_markers
+
+  - /mapPath

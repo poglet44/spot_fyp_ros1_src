@@ -1,0 +1,9 @@
+<launch>
+  <node
+    pkg="fyp_exploration_ros1"
+    type="exploration_experiment_logger_ros1.py"
+    name="exploration_experiment_logger_ros1"
+    output="screen">
+    <rosparam command="load" file="$(find fyp_exploration_ros1)/config/exploration_experiment_logger_ros1.yaml" />
+  </node>
+</launch>

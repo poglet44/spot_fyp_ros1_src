@@ -8,7 +8,7 @@
   <env name="SPOT_VELODYNE_AUTOLAUNCH" value="1"/>
   <env name="SPOT_VELODYNE_RPY" value="0 0 0.5235"/>
 
-  <arg name="hostname" default="10.0.10.31"/>
+  <arg name="hostname" default="192.168.80.3"/>
   <arg name="username" default="user"/>
   <arg name="password" default="qpjpv23iop23"/>
 
