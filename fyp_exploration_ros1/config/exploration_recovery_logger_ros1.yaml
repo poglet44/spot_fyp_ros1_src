@@ -1,0 +1,19 @@
+log_root_dir: ~/Sam/spot_ros1_ws/logs
+
+frontier_detector_status_topic: /frontier_detector/status
+
+supervisor_status_topic: /exploration_supervisor/status
+supervisor_recovery_state_topic: /exploration_supervisor/recovery_state
+supervisor_recovery_target_goal_topic: /exploration_supervisor/recovery_target_goal
+
+arbiter_status_topic: /exploration_goal_arbiter/status
+selected_exploration_mode_topic: /selected_exploration_mode
+selected_exploration_goal_topic: /selected_exploration_goal
+selected_exploration_path_topic: /selected_exploration_path
+
+logging_rate_hz: 2.0
+
+executor_status_topic: /spot_frontier_executor/status
+cmd_vel_topic: /cmd_vel
+spot_cmd_vel_topic: /spot/cmd_vel
+motion_allowed_topic: /spot/status/motion_allowed

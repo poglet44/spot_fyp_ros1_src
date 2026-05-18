@@ -2,6 +2,7 @@
 
 import csv
 import heapq
+import json
 import math
 import re
 import time
@@ -19,6 +20,7 @@ import tf2_ros
 from geometry_msgs.msg import Point, Pose, PoseArray, PoseStamped, Quaternion
 from nav_msgs.msg import OccupancyGrid, Path
 from visualization_msgs.msg import Marker, MarkerArray
+from std_msgs.msg import String
 
 
 def Duration(seconds: float = 0.0) -> rospy.Duration:
@@ -143,6 +145,7 @@ class FrontierDetector:
         self.declare_parameter("frontier_goals_topic", "/frontier_goals")
         self.declare_parameter("selected_goal_topic", "/selected_frontier_goal")
         self.declare_parameter("frontier_path_topic", "/frontier_path")
+        self.declare_parameter("frontier_detector_status_topic", "/frontier_detector/status")
 
         # Frames
         self.declare_parameter("robot_frame", "body")
@@ -248,6 +251,9 @@ class FrontierDetector:
         self.frontier_goals_topic = self.get_parameter("frontier_goals_topic").value
         self.selected_goal_topic = self.get_parameter("selected_goal_topic").value
         self.frontier_path_topic = self.get_parameter("frontier_path_topic").value
+        self.frontier_detector_status_topic = self.get_parameter(
+            "frontier_detector_status_topic"
+        ).value
         self.frontier_regions_markers_topic = self.get_parameter(
             "frontier_regions_markers_topic"
         ).value
@@ -391,6 +397,7 @@ class FrontierDetector:
         self.goal_pub = self.create_publisher(PoseArray, self.frontier_goals_topic, 10)
         self.selected_goal_pub = self.create_publisher(PoseStamped, self.selected_goal_topic, 10)
         self.path_pub = self.create_publisher(Path, self.frontier_path_topic, 10)
+        self.status_pub = self.create_publisher(String, self.frontier_detector_status_topic, 10)
         self.region_marker_pub = self.create_publisher(
             MarkerArray,
             self.frontier_regions_markers_topic,
@@ -763,6 +770,13 @@ class FrontierDetector:
             robot_yaw=robot_yaw,
         )
 
+        self.publish_detector_status(
+            msg=msg,
+            raw_frontiers=raw_frontiers,
+            filtered_frontiers=filtered_frontiers,
+            planning_ran=planning_ran,
+        )
+
         if planning_ran:
             self.log_candidate_metrics(
                 msg=msg,
@@ -812,6 +826,62 @@ class FrontierDetector:
             'Falling back to "candidates_only".'
         )
         return "candidates_only"
+
+    def publish_detector_status(
+        self,
+        msg: OccupancyGrid,
+        raw_frontiers: Set[Cell],
+        filtered_frontiers: Set[Cell],
+        planning_ran: bool,
+    ) -> None:
+        """
+        Publish live planner status for an external exploration supervisor.
+
+        This is intentionally JSON in std_msgs/String to avoid adding custom
+        message definitions to the ROS1 package during development.
+        """
+        status = {
+            "stamp_sec": msg.header.stamp.secs,
+            "stamp_nanosec": msg.header.stamp.nsecs,
+            "ros_time_ns": self.get_clock().now().nanoseconds,
+            "map_count": self.map_count,
+            "planning_ran": bool(planning_ran),
+            "map_frame": msg.header.frame_id,
+            "width_cells": int(msg.info.width),
+            "height_cells": int(msg.info.height),
+            "resolution_m": float(msg.info.resolution),
+
+            "raw_frontier_cells": int(len(raw_frontiers)),
+            "filtered_frontier_cells": int(len(filtered_frontiers)),
+            "num_frontier_clusters": int(self.cached_num_clusters),
+            "num_candidate_goals": int(len(self.cached_candidates)),
+
+            "clusters_total": int(self.last_candidate_rejection_counts["clusters_total"]),
+            "clusters_not_evaluated_due_limit": int(
+                self.last_candidate_rejection_counts["clusters_not_evaluated_due_limit"]
+            ),
+            "clusters_no_safe_or_reachable_goal": int(
+                self.last_candidate_rejection_counts["clusters_no_safe_or_reachable_goal"]
+            ),
+            "clusters_no_path": int(self.last_candidate_rejection_counts["clusters_no_path"]),
+            "clusters_accepted": int(self.last_candidate_rejection_counts["clusters_accepted"]),
+
+            "planner_status": str(self.current_planner_status),
+            "selected_goal_available": self.cached_selected_candidate is not None,
+            "active_goal_available": self.active_goal_cell is not None,
+            "goal_reached": bool(self.current_goal_reached),
+            "goal_invalid": bool(self.current_goal_invalid),
+            "goal_timed_out": bool(self.current_goal_timed_out),
+            "goal_switched": bool(self.current_goal_switched),
+            "blacklist_count": int(len(self.blacklisted_goals)),
+            "require_reachable": bool(self.require_reachable),
+            "path_obstacle_clearance_m": float(self.path_obstacle_clearance_m),
+            "min_obstacle_clearance_m": float(self.min_obstacle_clearance_m),
+        }
+
+        msg_out = String()
+        msg_out.data = json.dumps(status, sort_keys=True)
+        self.status_pub.publish(msg_out)
 
     # -------------------------------------------------------------------------
     # CSV logging

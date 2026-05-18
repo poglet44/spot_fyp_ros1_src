@@ -1,5 +1,5 @@
 map_topic: /exploration_grid
-selected_goal_topic: /selected_frontier_goal
+selected_goal_topic: /selected_exploration_goal
 
 map_frame: map
 robot_frame: body
@@ -11,7 +11,7 @@ detector_run_dir_max_age_s: 60.0
 
 run_id: ""
 platform: ros1_spot
-algorithm_name: utility_frontier
+algorithm_name: nearest_frontier
 environment_name: real_world_test
 
 notes: ""

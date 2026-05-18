@@ -1,0 +1,60 @@
+detector_status_topic: /frontier_detector/status
+supervisor_status_topic: /exploration_supervisor/status
+recovery_state_topic: /exploration_supervisor/recovery_state
+recovery_target_goal_topic: /exploration_supervisor/recovery_target_goal
+executor_status_topic: /spot_frontier_executor/status
+
+map_frame: map
+robot_frame: body
+tf_lookup_timeout_s: 0.20
+
+# Number of planning cycles with:
+#   num_candidate_goals == 0
+# before entering recovery.
+no_candidates_grace_cycles: 3
+
+# Supported values:
+#   diagnostic_only
+#   none
+#   return_to_checkpoint
+recovery_mode: return_to_checkpoint
+
+# Publishes /exploration_supervisor/recovery_target_goal.
+# The arbiter then decides whether to select it.
+publish_recovery_target: true
+
+# Phase 1:
+# Hold/recheck for this many detector planning cycles before choosing recovery.
+local_recheck_cycles: 5
+
+# Candidate-rich checkpoint rules.
+checkpoint_min_candidates: 2
+checkpoint_min_spacing_m: 1.5
+max_checkpoints: 20
+
+# Checkpoints are selected proportionally relative to explored travel distance.
+# Example:
+#   0.75 = first try a checkpoint roughly 75% along the explored route
+#   0.50 = then roughly halfway back
+#   0.25 = then closer to start
+# If these are exhausted, supervisor returns to start.
+recovery_progress_fractions: [0.75, 0.50, 0.25]
+
+# Avoid selecting a checkpoint extremely close to the current/failure pose.
+# This is now only a local safety floor; proportional progress does the main scaling.
+checkpoint_min_return_distance_m: 1.0
+
+# Executor status reason used to detect recovery target arrival.
+executor_goal_reached_reason: goal_reached
+
+# Ignore tiny TF noise when integrating travelled distance.
+min_progress_update_distance_m: 0.03
+
+# Ignore stale executor goal_reached immediately after switching recovery targets.
+recovery_target_switch_grace_s: 3.0
+
+# Require the executor goal to match the active supervisor target before accepting goal_reached.
+active_target_match_tolerance_m: 0.75
+
+# Goal distance threshold used by supervisor when interpreting executor goal_reached.
+active_target_goal_reached_tolerance_m: 0.60

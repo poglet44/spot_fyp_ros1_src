@@ -7,6 +7,7 @@ frontier_markers_topic: /frontier_markers
 frontier_goals_topic: /frontier_goals
 selected_goal_topic: /selected_frontier_goal
 frontier_path_topic: /frontier_path
+frontier_detector_status_topic: /frontier_detector/status
 frontier_regions_markers_topic: /frontier_regions_markers
 
 robot_frame: body
@@ -33,7 +34,7 @@ candidate_validity_radius_m: 0.75
 enable_path_planning: true
 allow_diagonal_motion: true
 prevent_diagonal_corner_cutting: true
-path_obstacle_clearance_m: 0.35
+path_obstacle_clearance_m: 0.20
 require_reachable: true
 
 plan_every_n_maps: 3

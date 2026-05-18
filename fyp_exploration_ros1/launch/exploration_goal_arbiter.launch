@@ -1,0 +1,11 @@
+<launch>
+  <node
+    pkg="fyp_exploration_ros1"
+    type="exploration_goal_arbiter.py"
+    name="exploration_goal_arbiter"
+    output="screen">
+
+    <rosparam command="load" file="$(find fyp_exploration_ros1)/config/exploration_goal_arbiter.yaml" />
+
+  </node>
+</launch>

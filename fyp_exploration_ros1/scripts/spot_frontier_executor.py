@@ -25,6 +25,7 @@ This node does not select frontiers and does not replan. It only follows the
 path produced upstream.
 """
 
+import json
 import math
 import threading
 from typing import List, Optional, Tuple
@@ -33,7 +34,7 @@ import rospy
 import tf
 from geometry_msgs.msg import PoseStamped, Twist
 from nav_msgs.msg import OccupancyGrid, Path
-from std_msgs.msg import Bool, Empty
+from std_msgs.msg import Bool, Empty, String
 from std_srvs.srv import Trigger, TriggerResponse
 
 
@@ -77,6 +78,24 @@ class SpotFrontierExecutor:
         self.goal_topic = rospy.get_param("~goal_topic", "/selected_frontier_goal")
         self.map_topic = rospy.get_param("~map_topic", "/exploration_grid")
         self.cmd_vel_topic = rospy.get_param("~cmd_vel_topic", "/cmd_vel")
+        self.status_topic = rospy.get_param(
+            "~status_topic", "/spot_frontier_executor/status"
+        )
+
+        self.selected_mode_topic = rospy.get_param(
+            "~selected_mode_topic", "/selected_exploration_mode"
+        )
+        self.require_selected_mode = bool(
+            rospy.get_param("~require_selected_mode", True)
+        )
+        self.selected_mode_timeout_s = float(
+            rospy.get_param("~selected_mode_timeout_s", 2.0)
+        )
+        stop_modes_param = rospy.get_param(
+            "~selected_mode_stop_values", ["hold", "no_valid_output"]
+        )
+        self.selected_mode_stop_values = set(str(v) for v in stop_modes_param)
+
         self.motion_allowed_topic = rospy.get_param(
             "~motion_allowed_topic", "/spot/status/motion_allowed"
         )
@@ -160,6 +179,10 @@ class SpotFrontierExecutor:
         self.latest_path: Optional[Path] = None
         self.latest_goal: Optional[PoseStamped] = None
         self.latest_map: Optional[OccupancyGrid] = None
+
+        self.latest_selected_mode: str = ""
+        self.latest_selected_mode_received_time: Optional[rospy.Time] = None
+
         self.motion_allowed: bool = False
 
         self.manual_stop_active: bool = False
@@ -169,6 +192,10 @@ class SpotFrontierExecutor:
         self.last_stop_service_call_time = rospy.Time(0)
         self.stop_service_min_period_s = 1.0
 
+        self.last_status_state = "initialising"
+        self.last_status_reason = ""
+        self.last_command_twist = Twist()
+
         # ------------------------------------------------------------------
         # ROS interfaces
         # ------------------------------------------------------------------
@@ -176,10 +203,17 @@ class SpotFrontierExecutor:
         self.tf_listener = tf.TransformListener()
 
         self.cmd_pub = rospy.Publisher(self.cmd_vel_topic, Twist, queue_size=1)
+        self.status_pub = rospy.Publisher(self.status_topic, String, queue_size=10)
 
         rospy.Subscriber(self.path_topic, Path, self.path_callback, queue_size=1)
         rospy.Subscriber(self.goal_topic, PoseStamped, self.goal_callback, queue_size=1)
         rospy.Subscriber(self.map_topic, OccupancyGrid, self.map_callback, queue_size=1)
+        rospy.Subscriber(
+            self.selected_mode_topic,
+            String,
+            self.selected_mode_callback,
+            queue_size=10,
+        )
         rospy.Subscriber(
             self.motion_allowed_topic,
             Bool,
@@ -207,7 +241,13 @@ class SpotFrontierExecutor:
         rospy.loginfo("Spot frontier executor initialised.")
         rospy.loginfo("  enable_motion: %s", self.enable_motion)
         rospy.loginfo("  path_topic: %s", self.path_topic)
+        rospy.loginfo("  goal_topic: %s", self.goal_topic)
         rospy.loginfo("  cmd_vel_topic: %s", self.cmd_vel_topic)
+        rospy.loginfo("  status_topic: %s", self.status_topic)
+        rospy.loginfo("  selected_mode_topic: %s", self.selected_mode_topic)
+        rospy.loginfo("  require_selected_mode: %s", self.require_selected_mode)
+        rospy.loginfo("  selected_mode_timeout_s: %.2f", self.selected_mode_timeout_s)
+        rospy.loginfo("  selected_mode_stop_values: %s", sorted(list(self.selected_mode_stop_values)))
         rospy.loginfo("  manual_stop_topic: %s", self.manual_stop_topic)
         rospy.loginfo("  manual_locked_stop_topic: %s", self.manual_locked_stop_topic)
         rospy.loginfo("  spot_stop_service: %s", self.spot_stop_service_name)
@@ -224,6 +264,11 @@ class SpotFrontierExecutor:
     def goal_callback(self, msg: PoseStamped) -> None:
         with self._lock:
             self.latest_goal = msg
+
+    def selected_mode_callback(self, msg: String) -> None:
+        with self._lock:
+            self.latest_selected_mode = str(msg.data)
+            self.latest_selected_mode_received_time = rospy.Time.now()
 
     def map_callback(self, msg: OccupancyGrid) -> None:
         with self._lock:
@@ -304,6 +349,27 @@ class SpotFrontierExecutor:
             self.control_step()
             rate.sleep()
 
+    def selected_mode_age_s(self):
+        if self.latest_selected_mode_received_time is None:
+            return None
+        return (rospy.Time.now() - self.latest_selected_mode_received_time).to_sec()
+
+    def selected_mode_allows_motion(self):
+        if not self.require_selected_mode:
+            return True, "selected_mode_not_required"
+
+        if self.latest_selected_mode == "":
+            return False, "selected_mode_missing"
+
+        age_s = self.selected_mode_age_s()
+        if age_s is None or age_s > self.selected_mode_timeout_s:
+            return False, "selected_mode_stale"
+
+        if self.latest_selected_mode in self.selected_mode_stop_values:
+            return False, "selected_mode_" + self.latest_selected_mode
+
+        return True, "selected_mode_allows_motion"
+
     def control_step(self) -> None:
         with self._lock:
             path = self.latest_path
@@ -311,27 +377,91 @@ class SpotFrontierExecutor:
             grid = self.latest_map
             motion_allowed = self.motion_allowed
             manual_stop_active = self.manual_stop_active
+            locked_stop_requested = self.locked_stop_requested
+            selected_mode = self.latest_selected_mode
+            selected_mode_age = self.selected_mode_age_s()
+
+        base_status = self.build_base_status(
+            path=path,
+            goal=goal,
+            grid=grid,
+            motion_allowed=motion_allowed,
+            manual_stop_active=manual_stop_active,
+            locked_stop_requested=locked_stop_requested,
+        )
 
         if manual_stop_active:
             self.publish_zero("manual_stop_active", force=True)
+            base_status.update({
+                "state": "stopped",
+                "reason": "manual_stop_active",
+                "published_cmd_vel": True,
+                "cmd_linear_x": 0.0,
+                "cmd_linear_y": 0.0,
+                "cmd_angular_z": 0.0,
+            })
+            self.publish_status(base_status)
+            return
+
+        selected_mode_ok, selected_mode_reason = self.selected_mode_allows_motion()
+        if not selected_mode_ok:
+            self.publish_zero(selected_mode_reason)
+            base_status.update({
+                "state": "stopped",
+                "reason": selected_mode_reason,
+                "published_cmd_vel": True,
+                "cmd_linear_x": 0.0,
+                "cmd_linear_y": 0.0,
+                "cmd_angular_z": 0.0,
+            })
+            self.publish_status(base_status)
             return
 
         if not self.enable_motion:
-            self.compute_debug_only(path, goal, grid, motion_allowed)
+            status = self.compute_debug_only_status(path, goal, grid, motion_allowed)
+            base_status.update(status)
+            self.publish_status(base_status)
             return
 
         if not motion_allowed:
             self.publish_zero("spot_motion_not_allowed")
+            base_status.update({
+                "state": "stopped",
+                "reason": "spot_motion_not_allowed",
+                "published_cmd_vel": True,
+                "cmd_linear_x": 0.0,
+                "cmd_linear_y": 0.0,
+                "cmd_angular_z": 0.0,
+            })
+            self.publish_status(base_status)
             return
 
         valid, reason = self.basic_input_checks(path, goal, grid)
         if not valid:
             self.publish_zero(reason)
+            base_status.update({
+                "state": "stopped",
+                "reason": reason,
+                "published_cmd_vel": True,
+                "cmd_linear_x": 0.0,
+                "cmd_linear_y": 0.0,
+                "cmd_angular_z": 0.0,
+            })
+            self.publish_status(base_status)
             return
 
         robot_pose = self.lookup_robot_pose()
         if robot_pose is None:
             self.publish_zero("tf_lookup_failed")
+            base_status.update({
+                "state": "stopped",
+                "reason": "tf_lookup_failed",
+                "published_cmd_vel": True,
+                "cmd_linear_x": 0.0,
+                "cmd_linear_y": 0.0,
+                "cmd_angular_z": 0.0,
+            })
+            self.publish_status(base_status)
             return
 
         assert path is not None
@@ -341,13 +471,39 @@ class SpotFrontierExecutor:
         command_result = self.compute_path_following_command(path, goal, grid, robot_pose)
 
         if not command_result[0]:
-            self.publish_zero(command_result[1])
+            reason = command_result[1]
+            debug = command_result[3] if len(command_result) > 3 else {}
+            self.publish_zero(reason)
+            base_status.update(debug)
+            base_status.update({
+                "state": "stopped",
+                "reason": reason,
+                "robot_x": robot_pose[0],
+                "robot_y": robot_pose[1],
+                "robot_yaw": robot_pose[2],
+                "published_cmd_vel": True,
+                "cmd_linear_x": 0.0,
+                "cmd_linear_y": 0.0,
+                "cmd_angular_z": 0.0,
+            })
+            self.publish_status(base_status)
             return
 
         _, reason, twist, debug = command_result
 
         self.publish_twist(twist)
         self.log_debug(reason, debug)
+
+        base_status.update(debug)
+        base_status.update({
+            "state": "commanding",
+            "reason": reason,
+            "published_cmd_vel": True,
+            "cmd_linear_x": twist.linear.x,
+            "cmd_linear_y": twist.linear.y,
+            "cmd_angular_z": twist.angular.z,
+        })
+        self.publish_status(base_status)
 
     # ----------------------------------------------------------------------
     # Checks
@@ -437,13 +593,13 @@ class SpotFrontierExecutor:
     # Path following
     # ----------------------------------------------------------------------
 
-    def compute_debug_only(
+    def compute_debug_only_status(
         self,
         path: Optional[Path],
         goal: Optional[PoseStamped],
         grid: Optional[OccupancyGrid],
         motion_allowed: bool,
-    ) -> None:
+    ) -> dict:
         robot_pose = self.lookup_robot_pose()
         if robot_pose is None:
             self.log_debug(
@@ -453,7 +609,12 @@ class SpotFrontierExecutor:
                     "motion_allowed": motion_allowed,
                 },
             )
-            return
+            return {
+                "state": "debug_only",
+                "reason": "tf_lookup_failed",
+                "motion_allowed": motion_allowed,
+                "published_cmd_vel": False,
+            }
 
         valid, reason = self.basic_input_checks(path, goal, grid)
         if not valid:
@@ -465,7 +626,15 @@ class SpotFrontierExecutor:
                     "motion_allowed": motion_allowed,
                 },
             )
-            return
+            return {
+                "state": "debug_only",
+                "reason": reason,
+                "motion_allowed": motion_allowed,
+                "robot_x": robot_pose[0],
+                "robot_y": robot_pose[1],
+                "robot_yaw": robot_pose[2],
+                "published_cmd_vel": False,
+            }
 
         assert path is not None
         assert goal is not None
@@ -474,6 +643,7 @@ class SpotFrontierExecutor:
         command_result = self.compute_path_following_command(path, goal, grid, robot_pose)
 
         if not command_result[0]:
+            debug = command_result[3] if len(command_result) > 3 else {}
             self.log_debug(
                 "debug_only_no_command",
                 {
@@ -482,7 +652,16 @@ class SpotFrontierExecutor:
                     "motion_allowed": motion_allowed,
                 },
             )
-            return
+            debug.update({
+                "state": "debug_only",
+                "reason": command_result[1],
+                "motion_allowed": motion_allowed,
+                "robot_x": robot_pose[0],
+                "robot_y": robot_pose[1],
+                "robot_yaw": robot_pose[2],
+                "published_cmd_vel": False,
+            })
+            return debug
 
         _, reason, twist, debug = command_result
         debug["enable_motion"] = self.enable_motion
@@ -491,6 +670,17 @@ class SpotFrontierExecutor:
         debug["proposed_angular_z"] = twist.angular.z
 
         self.log_debug("debug_only_" + reason, debug)
+
+        debug.update({
+            "state": "debug_only",
+            "reason": reason,
+            "motion_allowed": motion_allowed,
+            "published_cmd_vel": False,
+            "cmd_linear_x": 0.0,
+            "cmd_linear_y": 0.0,
+            "cmd_angular_z": 0.0,
+        })
+        return debug
 
     def compute_path_following_command(
         self,
@@ -779,6 +969,102 @@ class SpotFrontierExecutor:
             return None
 
         return gx, gy
+
+    # ----------------------------------------------------------------------
+    # Structured executor status
+    # ----------------------------------------------------------------------
+
+    def build_base_status(
+        self,
+        path: Optional[Path],
+        goal: Optional[PoseStamped],
+        grid: Optional[OccupancyGrid],
+        motion_allowed: bool,
+        manual_stop_active: bool,
+        locked_stop_requested: bool,
+    ) -> dict:
+        path_age = stamp_to_age_s(path.header.stamp) if path is not None else None
+        goal_age = stamp_to_age_s(goal.header.stamp) if goal is not None else None
+        map_age = stamp_to_age_s(grid.header.stamp) if grid is not None else None
+
+        path_pose_count = len(path.poses) if path is not None else 0
+
+        goal_x = ""
+        goal_y = ""
+        if goal is not None:
+            goal_x = goal.pose.position.x
+            goal_y = goal.pose.position.y
+
+        return {
+            "stamp_sec": rospy.Time.now().secs,
+            "stamp_nanosec": rospy.Time.now().nsecs,
+
+            "path_topic": self.path_topic,
+            "goal_topic": self.goal_topic,
+            "map_topic": self.map_topic,
+            "cmd_vel_topic": self.cmd_vel_topic,
+            "motion_allowed_topic": self.motion_allowed_topic,
+
+            "selected_mode_topic": self.selected_mode_topic,
+            "selected_mode": self.latest_selected_mode,
+            "selected_mode_age_s": self.selected_mode_age_s() if self.selected_mode_age_s() is not None else "",
+            "require_selected_mode": self.require_selected_mode,
+            "selected_mode_stop_values": sorted(list(self.selected_mode_stop_values)),
+            "selected_mode_stop_requested": self.latest_selected_mode in self.selected_mode_stop_values,
+
+            "enable_motion": self.enable_motion,
+            "motion_allowed": motion_allowed,
+            "manual_stop_active": manual_stop_active,
+            "locked_stop_requested": locked_stop_requested,
+
+            "path_available": path is not None,
+            "goal_available": goal is not None,
+            "map_available": grid is not None,
+
+            "path_frame": path.header.frame_id if path is not None else "",
+            "goal_frame": goal.header.frame_id if goal is not None else "",
+            "map_frame": grid.header.frame_id if grid is not None else "",
+
+            "path_age_s": path_age if path_age is not None else "",
+            "goal_age_s": goal_age if goal_age is not None else "",
+            "map_age_s": map_age if map_age is not None else "",
+
+            "max_path_age_s": self.max_path_age_s,
+            "max_goal_age_s": self.max_goal_age_s,
+            "max_map_age_s": self.max_map_age_s,
+
+            "path_pose_count": path_pose_count,
+            "goal_x": goal_x,
+            "goal_y": goal_y,
+
+            "global_frame": self.global_frame,
+            "robot_frame": self.robot_frame,
+
+            "lookahead_distance_m": self.lookahead_distance_m,
+            "min_lookahead_distance_m": self.min_lookahead_distance_m,
+            "goal_tolerance_m": self.goal_tolerance_m,
+            "path_reached_tolerance_m": self.path_reached_tolerance_m,
+            "max_distance_from_path_m": self.max_distance_from_path_m,
+
+            "occupied_threshold": self.occupied_threshold,
+            "unknown_is_blocked": self.unknown_is_blocked,
+            "safety_check_radius_m": self.safety_check_radius_m,
+            "check_path_to_lookahead": self.check_path_to_lookahead,
+
+            "max_linear_x_mps": self.max_linear_x_mps,
+            "max_linear_y_mps": self.max_linear_y_mps,
+            "max_angular_z_radps": self.max_angular_z_radps,
+            "linear_gain": self.linear_gain,
+            "angular_gain": self.angular_gain,
+            "rotate_to_heading_threshold_rad": self.rotate_to_heading_threshold_rad,
+            "allow_reverse": self.allow_reverse,
+            "allow_lateral_motion": self.allow_lateral_motion,
+        }
+
+    def publish_status(self, status: dict) -> None:
+        msg = String()
+        msg.data = json.dumps(status, sort_keys=True)
+        self.status_pub.publish(msg)
 
     # ----------------------------------------------------------------------
     # Publishing/logging

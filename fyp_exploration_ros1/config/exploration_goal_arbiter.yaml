@@ -1,0 +1,40 @@
+frontier_goal_topic: /selected_frontier_goal
+frontier_path_topic: /frontier_path
+exploration_grid_topic: /exploration_grid
+
+supervisor_status_topic: /exploration_supervisor/status
+recovery_target_goal_topic: /exploration_supervisor/recovery_target_goal
+
+selected_goal_topic: /selected_exploration_goal
+selected_path_topic: /selected_exploration_path
+selected_mode_topic: /selected_exploration_mode
+status_topic: /exploration_goal_arbiter/status
+
+map_frame: map
+robot_frame: body
+tf_lookup_timeout_s: 0.20
+
+publish_rate_hz: 5.0
+
+frontier_input_timeout_s: 2.0
+recovery_target_timeout_s: 5.0
+grid_timeout_s: 5.0
+
+occupied_threshold: 50
+free_max_value: 0
+unknown_is_blocked: true
+
+recovery_path_clearance_m: 0.20
+allow_diagonal_motion: true
+prevent_diagonal_corner_cutting: true
+max_astar_expansions: 200000
+
+# Keep false until arbiter outputs have been checked in rosbag/RViz.
+# When false:
+#   - frontier output can be forwarded
+#   - recovery states are reported
+#   - recovery targets are not selected as final executor targets
+enable_recovery_selection: true
+
+# Replan recovery path occasionally, but publish cached recovery path every arbiter tick.
+recovery_replan_period_s: 0.0
