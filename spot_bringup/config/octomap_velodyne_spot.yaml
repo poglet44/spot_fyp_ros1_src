@@ -9,7 +9,7 @@ octomap_server:
   # Voxel resolution.
   # 0.05 m = detailed, heavier, noisier projection.
   # 0.10 m = cleaner/coarser, likely better later for frontiers.
-  resolution: 0.05
+  resolution: 0.10
 
   # Compress map for efficiency.
   compress_map: true
@@ -40,7 +40,7 @@ octomap_server:
   # 2D projected map occupancy z band.
   # This was previously -100 to +100, which collapsed too much vertical clutter
   # into /projected_map.
-  occupancy_min_z: 0.05 #was 0.05
+  occupancy_min_z: 0.10 #was 0.05
   occupancy_max_z: 1.00
 
   # Rebuild 2D projection from the full tree rather than incrementally.
