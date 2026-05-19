@@ -67,12 +67,12 @@ debug_log_period_s: 1.0
 lookahead_distance_m: 0.60
 min_lookahead_distance_m: 0.35
 
-goal_tolerance_m: 0.50
+goal_tolerance_m: 0.75
 path_reached_tolerance_m: 0.30
 
 max_path_age_s: 5.0
 max_goal_age_s: 5.0
-max_map_age_s: 2.0
+max_map_age_s: 1.0
 
 max_distance_from_path_m: 0.75
 
@@ -95,7 +95,7 @@ max_linear_x_mps: 1.0
 max_linear_y_mps: 0.0
 max_angular_z_radps: 0.50
 
-linear_gain: 0.75
+linear_gain: 0.50
 angular_gain: 1.00
 
 allow_reverse: false

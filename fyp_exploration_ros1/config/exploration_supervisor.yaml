@@ -57,4 +57,4 @@ recovery_target_switch_grace_s: 3.0
 active_target_match_tolerance_m: 0.75
 
 # Goal distance threshold used by supervisor when interpreting executor goal_reached.
-active_target_goal_reached_tolerance_m: 0.60
+active_target_goal_reached_tolerance_m: 0.75

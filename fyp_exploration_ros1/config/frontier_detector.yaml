@@ -24,7 +24,7 @@ min_cluster_size_cells: 3
 merge_nearby_frontier_clusters: true
 frontier_cluster_merge_distance_m: 0.30
 
-min_obstacle_clearance_m: 0.10
+min_obstacle_clearance_m: 0.20
 min_robot_distance_m: 0.75
 
 goal_search_radius_m: 1.00
@@ -34,11 +34,11 @@ candidate_validity_radius_m: 0.75
 enable_path_planning: true
 allow_diagonal_motion: true
 prevent_diagonal_corner_cutting: true
-path_obstacle_clearance_m: 0.20
+path_obstacle_clearance_m: 0.25
 require_reachable: true
 
-plan_every_n_maps: 3
-min_plan_period_s: 0.75
+plan_every_n_maps: 5
+min_plan_period_s: 1.00
 publish_text_labels: true
 publish_debug_every_n_maps: 10
 region_anchor_clearance_m: 0.50
@@ -72,7 +72,7 @@ enable_goal_hysteresis: false
 hysteresis_goal_match_distance_m: 0.75
 hysteresis_switch_margin: 0.75
 
-goal_reached_distance_m: 0.35
+goal_reached_distance_m: 1.00
 goal_timeout_s: 120.0
 goal_blacklist_radius_m: 0.50
 goal_blacklist_duration_s: 20.0
